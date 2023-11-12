@@ -1,0 +1,673 @@
+<div class="back" id="table-form">
+    <div class="container my-panel">
+
+
+        <mat-card class="col-lg-12 mt-xl-7 mat-card2">
+            <mat-card-content>
+                <div *ngIf="loading" fxLayout="row" fxLayoutAlign="center center" class="my-24">
+                    <mat-spinner diameter="50"></mat-spinner>
+                </div>
+
+                <div *ngIf="!loading&&((data&&data.length==0)||!data)" fxLayout="row" fxLayoutAlign="center center" class="my-24 hint-text noData w-full">
+                    <div class="mx-4"><mat-icon>error_outline</mat-icon></div>
+                    <div>داده‌ای برای نمایش وجود ندارد.</div>
+                </div>
+
+                <div *ngIf="!loading&&data&&data.length!=0" class="custom-table">
+                    <div fxLayout="row" fxLayoutAlign="space-between center">
+                        <mat-form-field class="col-sm-12 col-md-12 col-lg-12 col-xl-12" *ngIf="hasFilter">
+                            <mat-label>فیلتر</mat-label>
+                            <input matInput [(ngModel)]="searchText" (keyup)="applyFilter($event)" placeholder="..." #input>
+                        </mat-form-field>
+                        <div *ngIf="hasExport">
+                            <button mat-icon-button class="cyan-btn"
+                                    matTooltip="خروجی اکسل" (click)="getExcelFile()"
+                                    [disabled]="loadExcel">
+                                <mat-icon *ngIf="!loadExcel">cloud_download</mat-icon>
+
+
+                                <mat-spinner diameter="25" *ngIf="loadExcel"></mat-spinner>
+
+                            </button>
+                        </div>
+                    </div>
+                    <table mat-table [dataSource]="data |filter: repSearch| order_by:peropertySort:sortType" class="mat-elevation-z8"
+                           *ngIf="!expandable" fxHide fxShow.gt-xs
+                           matSort (matSortChange)="sortData($event,data)" #empTbSort="matSort" arrowPosition='before'>
+                        <ng-container [matColumnDef]="column" *ngFor="let column of displayedColumns">
+                            <th mat-header-cell *matHeaderCellDef fxHide fxShow.gt-xs mat-sort-header [disabled]="(dataColumns[column].disableSort==false)?dataColumns[column].disableSort:true">
+                                <span *ngIf="dataColumns[column].columnsType!='select'">{{dataColumns[column].columnsName}}</span>
+                                <div *ngIf="dataColumns[column].columnsType=='select'">
+                                    <mat-checkbox (change)="$event ? masterToggleTable() : null"
+                                                  [checked]="selectionTable.hasValue() && isAllSelectedTable()"
+                                                  [indeterminate]="selectionTable.hasValue() && !isAllSelectedTable()"
+                                                  [aria-label]="checkboxLabelTable()"
+                                                  >
+                                    </mat-checkbox>
+                                </div>
+                            </th>
+                            <td mat-cell *matCellDef="let element; let rowIdx = index;" data-label="{{column}}"
+                                [ngClass]="element['color']?element['color']:''">
+
+                                <div *ngIf="dataColumns[column].columnsType=='select'">
+                                    <mat-checkbox (click)="$event.stopPropagation()"
+                                                  (change)="$event ? selectionTable.toggle(element) : null; selectionItem.emit(selectionTable)"
+                                                  [checked]="selectionTable.isSelected(element)"
+                                                  [aria-label]="checkboxLabelTable(element,rowIdx)"
+                                                  [(ngModel)]="element.selected"
+                                                  [ngModelOptions]="{standalone: true}">
+                                    </mat-checkbox>
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='singleSelect'">
+                                    <mat-checkbox (click)="$event.stopPropagation()"
+                                                  [checked]="selectionTable.isSelected(element)" (change)="$event ? checkItem($event,element) : selectionTable.clear()">
+                                    </mat-checkbox>
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='index'">
+                                    {{(tablePaginator.pageSize*tablePaginator.pageIndex)+rowIdx+1}}
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='text'">
+                                    {{element[column]}}
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='textObject'">
+                                    {{element[column].title}}
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='list' && dataColumns[column]?.show!='all'">
+
+
+                                    <span class="expand-desc" *ngFor="let item of element[column]; index as x">
+                                        <span *ngIf="x<2">
+
+                                            <span *ngIf="checkType(item)">
+                                                {{dataColumns[column].displayName?item[dataColumns[column].displayName]:item.title}}
+                                            </span>
+                                            <span *ngIf="!checkType(item)">{{item}}</span>
+                                            <span class="expand-desc" *ngIf="x+1<element[column].length">,</span>
+                                        </span>
+                                        <span *ngIf="x==2">
+                                            ...
+                                        </span>
+                                    </span>
+
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='list' && dataColumns[column]?.show=='all'">
+
+
+                                    <span class="expand-desc" *ngFor="let item of element[column]; index as x">
+
+
+                                        <span *ngIf="checkType(item)">
+                                            {{dataColumns[column].displayName?item[dataColumns[column].displayName]:item.title}}
+                                        </span>
+                                        <span *ngIf="!checkType(item)">{{item}}</span>
+                                        <span class="expand-desc" *ngIf="x+1<element[column].length">,</span>
+
+                                    </span>
+
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='textObjectName'">
+                                    {{element[column].name}}
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='textObjectNameFa'">
+                                    {{element[column].nameFa}}
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='routerLinkObject'">
+                                    <a [routerLink]="element[column].routerLink">{{element[column].title}}</a>
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='MatToggle'">
+                                    <mat-slide-toggle [checked]="element[column]" (change)="dataColumns[column].function(element,(tablePaginator.pageSize*tablePaginator.pageIndex)+rowIdx,$event)"></mat-slide-toggle>
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='Menu'">
+                                    <button mat-icon-button [matMenuTriggerFor]="moreMenu" aria-label="More"
+                                            fxHide.xs>
+                                        <mat-icon class="secondary-text">more_vert</mat-icon>
+                                    </button>
+                                    <mat-menu #moreMenu="matMenu" #menu>
+
+                                        <div>
+
+                                            <button mat-menu-item aria-label="toggle done"
+                                                    (click)="item.function($event,element)"
+                                                    *ngFor="let item of dataColumns[column].menuItem"
+                                                    [disabled]="element[item.name]?element[item.name]:false">
+                                                <ng-container>
+                                                    <mat-icon *ngIf="item.icon">{{item.icon}}</mat-icon>
+                                                    <span> {{item.title}}</span>
+                                                </ng-container>
+                                            </button>
+                                        </div>
+                                    </mat-menu>
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='trueFalseIcon'">
+                                    <mat-icon *ngIf="element[column]" style="color: green;">{{dataColumns[column].trueIcon?dataColumns[column].trueIcon:'check_circle'}}</mat-icon>
+                                    <mat-icon *ngIf="element[column]!=null && !element[column]" style="color: red;">{{dataColumns[column].falseIcon?dataColumns[column].falseIcon:'highlight_off'}}</mat-icon>
+                                </div>
+
+                                <button mat-icon-button matTooltip="{{dataColumns[column].columnsName}}" *ngIf="dataColumns[column].columnsType=='Button'"
+                                        (click)="dataColumns[column].function((tablePaginator.pageSize*tablePaginator.pageIndex)+rowIdx,element)"
+                                        [disabled]="element[column]?element[column]:false">
+                                    <mat-icon>{{dataColumns[column].columnsIcon}}</mat-icon>
+                                </button>
+
+                            </td>
+
+                        </ng-container>
+
+                        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+                        <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+                            ></tr>
+                    </table>
+                    <table mat-table [dataSource]="data |filter: repSearch| order_by:peropertySort:sortType" class="mat-elevation-z8" *ngIf="!expandable && displayedColumnsSmall"
+                           multiTemplateDataRows fxHide.gt-xs fxShow
+                           matSort (matSortChange)="sortData($event,data)" #empTbSort="matSort" arrowPosition='before'>
+                        <ng-container [matColumnDef]="column" *ngFor="let column of displayedColumnsSmall">
+                            <th mat-header-cell *matHeaderCellDef mat-sort-header [disabled]="(dataColumns[column].disableSort==false)?dataColumns[column].disableSort:true">
+                                <span *ngIf="dataColumns[column].columnsType!='select'">{{dataColumns[column].columnsName}}</span>
+                                <div *ngIf="dataColumns[column].columnsType=='select'">
+                                    <mat-checkbox (change)="$event ? masterToggleTable() : null"
+                                                  [checked]="selectionTable.hasValue() && isAllSelectedTable()"
+                                                  [indeterminate]="selectionTable.hasValue() && !isAllSelectedTable()"
+                                                  [aria-label]="checkboxLabelTable()"
+                                                  >
+                                    </mat-checkbox>
+                                </div>
+                            </th>
+                            <td mat-cell *matCellDef="let element; let rowIdx = dataIndex;" data-label="{{column}}">
+
+                                <div *ngIf="dataColumns[column].columnsType=='select'">
+                                    <mat-checkbox (click)="$event.stopPropagation()"
+                                                  (change)="$event ? selectionTable.toggle(element) : null; selectionItem.emit(selectionTable)"
+                                                  [checked]="selectionTable.isSelected(element)"
+                                                  [aria-label]="checkboxLabelTable(element,rowIdx)"
+                                                  [(ngModel)]="element.selected"
+                                                  [ngModelOptions]="{standalone: true}">
+                                    </mat-checkbox>
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='singleSelect'">
+                                    <mat-checkbox (click)="$event.stopPropagation()"
+                                                  [checked]="selectionTable.isSelected(element)" (change)="$event ? checkItem($event,element) : selectionTable.clear()">
+                                    </mat-checkbox>
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='index'">
+                                    {{(tablePaginator.pageSize*tablePaginator.pageIndex)+rowIdx+1}}
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='text'">
+                                    {{element[column]}}
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='textObject'">
+                                    {{element[column].title}}
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='list' && dataColumns[column]?.show!='all'">
+
+
+                                    <span class="expand-desc" *ngFor="let item of element[column]; index as x">
+                                        <span *ngIf="x<2">
+
+                                            <span *ngIf="checkType(item)">
+                                                {{dataColumns[column].displayName?item[dataColumns[column].displayName]:item.title}}
+                                            </span>
+                                            <span *ngIf="!checkType(item)">{{item}}</span>
+                                            <span class="expand-desc" *ngIf="x+1<element[column].length">,</span>
+                                        </span>
+                                        <span *ngIf="x==2">
+                                            ...
+                                        </span>
+                                    </span>
+
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='list' && dataColumns[column]?.show=='all'">
+
+
+                                    <span class="expand-desc" *ngFor="let item of element[column]; index as x">
+
+
+                                        <span *ngIf="checkType(item)">
+                                            {{dataColumns[column].displayName?item[dataColumns[column].displayName]:item.title}}
+                                        </span>
+                                        <span *ngIf="!checkType(item)">{{item}}</span>
+                                        <span class="expand-desc" *ngIf="x+1<element[column].length">,</span>
+
+                                    </span>
+
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='textObjectName'">
+                                    {{element[column].name}}
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='textObjectNameFa'">
+                                    {{element[column].nameFa}}
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='routerLinkObject'">
+                                    <a [routerLink]="element[column].routerLink">{{element[column].title}}</a>
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='MatToggle'">
+                                    <mat-slide-toggle [checked]="element[column]" (change)="dataColumns[column].function(element,(tablePaginator.pageSize*tablePaginator.pageIndex)+rowIdx,$event)"></mat-slide-toggle>
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='Menu'">
+                                    <button mat-icon-button [matMenuTriggerFor]="moreMenu" aria-label="More"
+                                            fxHide.xs>
+                                        <mat-icon class="secondary-text">more_vert</mat-icon>
+                                    </button>
+                                    <mat-menu #moreMenu="matMenu" #menu>
+
+                                        <div>
+
+                                            <button mat-menu-item aria-label="toggle done"
+                                                    (click)="item.function($event,element)"
+                                                    *ngFor="let item of dataColumns[column].menuItem"
+                                                    [disabled]="element[item.name]?element[item.name]:false">
+                                                <ng-container>
+                                                    <mat-icon *ngIf="item.icon">{{item.icon}}</mat-icon>
+                                                    <span> {{item.title}}</span>
+                                                </ng-container>
+                                            </button>
+                                        </div>
+                                    </mat-menu>
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='trueFalseIcon'">
+                                    <mat-icon *ngIf="element[column]" style="color: green;">{{dataColumns[column].trueIcon?dataColumns[column].trueIcon:'check_circle'}}</mat-icon>
+                                    <mat-icon *ngIf="element[column]!=null && !element[column]" style="color: red;">{{dataColumns[column].falseIcon?dataColumns[column].falseIcon:'highlight_off'}}</mat-icon>
+                                </div>
+                                <button mat-icon-button matTooltip="{{dataColumns[column].columnsName}}" *ngIf="dataColumns[column].columnsType=='Button'"
+                                        (click)="dataColumns[column].function((tablePaginator.pageSize*tablePaginator.pageIndex)+rowIdx,element)"
+                                        [disabled]="element[column]?element[column]:false">
+                                    <mat-icon>{{dataColumns[column].columnsIcon}}</mat-icon>
+                                </button>
+                                <button mat-icon-button matTooltip="{{dataColumns[column].columnsName}}" *ngIf="dataColumns[column].columnsType=='ex'"
+                                        [class.example-expanded-row]="expandedElement === element"
+                                        (click)="checkExpand(element,rowIdx)">
+                                    <mat-icon *ngIf="!expandedElement">expand_more</mat-icon>
+                                    <mat-icon *ngIf="expandedElement">expand_less</mat-icon>
+                                </button>
+                            </td>
+
+                        </ng-container>
+                        <ng-container matColumnDef="expandedDetail">
+                            <td mat-cell *matCellDef="let element;" [attr.colspan]="displayedColumnsSmall.length">
+                                <div class="example-element-detail"
+                                     [@detailExpand]="element == expandedElement ? 'expanded' : 'collapsed'">
+                                    <div class="example-element-diagram"
+                                         fxLayout="row wrap">
+                                        <div class="example-element-position"
+                                             *ngFor="let ex of expandDataSmall"
+                                             fxFlex="100"
+                                             fxLayoutAlign="start start">
+                                            <span *ngIf="dataColumns[ex].columnsType=='text'">
+                                                <span class="expandData">{{dataColumns[ex].columnsName}}:</span> <span class="expand-desc">{{element[ex]}}</span>
+                                            </span>
+                                            <span *ngIf="dataColumns[ex].columnsType=='textObject'">
+                                                <span class="expandData">{{dataColumns[ex].columnsName}}:</span> <span class="expand-desc">{{element[ex].title}} </span>
+                                            </span>
+                                            <span *ngIf="dataColumns[ex].columnsType=='textObjectName'">
+                                                <span class="expandData">{{dataColumns[ex].columnsName}}:</span> <span class="expand-desc">{{element[ex].name}} </span>
+                                            </span>
+                                            <span *ngIf="dataColumns[ex].columnsType=='textObjectNameFa'">
+                                                <span class="expandData">{{dataColumns[ex].columnsName}}:</span> <span class="expand-desc">{{element[ex].nameFa}} </span>
+                                            </span>
+                                            <span *ngIf="dataColumns[ex].columnsType=='list'">
+                                                <span class="expandData">{{dataColumns[ex].columnsName}}:</span> <span class="expand-desc" *ngFor="let item of element[ex]; index as x">
+                                                    <span *ngIf="checkType(item)">{{item.title}}</span>
+                                                    <span *ngIf="!checkType(item)">{{item}}</span>
+                                                    <span class="expand-desc" *ngIf="x+1<element[ex].length">,</span>
+                                                </span>
+                                            </span>
+                                        </div>
+
+                                    </div>
+
+                                </div>
+                            </td>
+                        </ng-container>
+                        <tr mat-header-row *matHeaderRowDef="displayedColumnsSmall"></tr>
+
+                        <tr mat-row *matRowDef="let element; columns: displayedColumnsSmall"
+                            class="example-element-row">
+                        </tr>
+                        <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="example-detail-row"></tr>
+                    </table>
+                    <table mat-table [dataSource]="data |filter: repSearch| order_by:peropertySort:sortType" class="mat-elevation-z8" *ngIf="expandable && displayedColumnsSmall"
+                           multiTemplateDataRows fxHide.gt-xs fxShow
+                           matSort (matSortChange)="sortData($event,data)" #empTbSort="matSort" arrowPosition='before'>
+                        <ng-container [matColumnDef]="column" *ngFor="let column of displayedColumnsSmall">
+                            <th mat-header-cell *matHeaderCellDef mat-sort-header [disabled]="(dataColumns[column].disableSort==false)?dataColumns[column].disableSort:true">
+                                <span *ngIf="dataColumns[column].columnsType!='select'">{{dataColumns[column].columnsName}}</span>
+                                <div *ngIf="dataColumns[column].columnsType=='select'">
+                                    <mat-checkbox (change)="$event ? masterToggleTable() : null"
+                                                  [checked]="selectionTable.hasValue() && isAllSelectedTable()"
+                                                  [indeterminate]="selectionTable.hasValue() && !isAllSelectedTable()"
+                                                  [aria-label]="checkboxLabelTable()"
+                                                 >
+                                    </mat-checkbox>
+                                </div>
+                            </th>
+                            <td mat-cell *matCellDef="let element; let rowIdx = dataIndex;" data-label="{{column}}">
+
+                                <div *ngIf="dataColumns[column].columnsType=='select'">
+                                    <mat-checkbox (click)="$event.stopPropagation()"
+                                                  (change)="$event ? selectionTable.toggle(element) : null; selectionItem.emit(selectionTable)"
+                                                  [checked]="selectionTable.isSelected(element)"
+                                                  [aria-label]="checkboxLabelTable(element,rowIdx)"
+                                                  [(ngModel)]="element.selected"
+                                                  [ngModelOptions]="{standalone: true}">
+                                    </mat-checkbox>
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='singleSelect'">
+                                    <mat-checkbox (click)="$event.stopPropagation()"
+                                                  [checked]="selectionTable.isSelected(element)" (change)="$event ? checkItem($event,element) : selectionTable.clear()">
+                                    </mat-checkbox>
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='index'">
+                                    {{(tablePaginator.pageSize*tablePaginator.pageIndex)+rowIdx+1}}
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='text'">
+                                    {{element[column]}}
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='textObject'">
+                                    {{element[column].title}}
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='list' && dataColumns[column]?.show!='all'">
+
+
+                                    <span class="expand-desc" *ngFor="let item of element[column]; index as x">
+                                        <span *ngIf="x<2">
+
+                                            <span *ngIf="checkType(item)">
+                                                {{dataColumns[column].displayName?item[dataColumns[column].displayName]:item.title}}
+                                            </span>
+                                            <span *ngIf="!checkType(item)">{{item}}</span>
+                                            <span class="expand-desc" *ngIf="x+1<element[column].length">,</span>
+                                        </span>
+                                        <span *ngIf="x==2">
+                                            ...
+                                        </span>
+                                    </span>
+
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='list' && dataColumns[column]?.show=='all'">
+
+
+                                    <span class="expand-desc" *ngFor="let item of element[column]; index as x">
+
+
+                                        <span *ngIf="checkType(item)">
+                                            {{dataColumns[column].displayName?item[dataColumns[column].displayName]:item.title}}
+                                        </span>
+                                        <span *ngIf="!checkType(item)">{{item}}</span>
+                                        <span class="expand-desc" *ngIf="x+1<element[column].length">,</span>
+
+                                    </span>
+
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='textObjectName'">
+                                    {{element[column].name}}
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='textObjectNameFa'">
+                                    {{element[column].nameFa}}
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='routerLinkObject'">
+                                    <a [routerLink]="element[column].routerLink">{{element[column].title}}</a>
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='MatToggle'">
+                                    <mat-slide-toggle [checked]="element[column]" (change)="dataColumns[column].function(element,(tablePaginator.pageSize*tablePaginator.pageIndex)+rowIdx,$event)"></mat-slide-toggle>
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='Menu'">
+                                    <button mat-icon-button [matMenuTriggerFor]="moreMenu" aria-label="More"
+                                            fxHide.xs>
+                                        <mat-icon class="secondary-text">more_vert</mat-icon>
+                                    </button>
+                                    <mat-menu #moreMenu="matMenu" #menu>
+
+                                        <div>
+
+                                            <button mat-menu-item aria-label="toggle done"
+                                                    (click)="item.function($event,element)"
+                                                    *ngFor="let item of dataColumns[column].menuItem"
+                                                    [disabled]="element[item.name]?element[item.name]:false">
+                                                <ng-container>
+                                                    <mat-icon *ngIf="item.icon">{{item.icon}}</mat-icon>
+                                                    <span> {{item.title}}</span>
+                                                </ng-container>
+                                            </button>
+                                        </div>
+                                    </mat-menu>
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='trueFalseIcon'">
+                                    <mat-icon *ngIf="element[column]" style="color: green;">{{dataColumns[column].trueIcon?dataColumns[column].trueIcon:'check_circle'}}</mat-icon>
+                                    <mat-icon *ngIf="element[column]!=null && !element[column]" style="color: red;">{{dataColumns[column].falseIcon?dataColumns[column].falseIcon:'highlight_off'}}</mat-icon>
+                                </div>
+                                <button mat-icon-button matTooltip="{{dataColumns[column].columnsName}}" *ngIf="dataColumns[column].columnsType=='Button'"
+                                        (click)="dataColumns[column].function((tablePaginator.pageSize*tablePaginator.pageIndex)+rowIdx,element)"
+                                        [disabled]="element[column]?element[column]:false">
+                                    <mat-icon>{{dataColumns[column].columnsIcon}}</mat-icon>
+                                </button>
+                                <button mat-icon-button matTooltip="{{dataColumns[column].columnsName}}" *ngIf="dataColumns[column].columnsType=='ex'"
+                                        [class.example-expanded-row]="expandedElement === element"
+                                        (click)="checkExpand(element,rowIdx)">
+                                    <mat-icon *ngIf="!expandedElement">expand_more</mat-icon>
+                                    <mat-icon *ngIf="expandedElement">expand_less</mat-icon>
+                                </button>
+                            </td>
+
+                        </ng-container>
+                        <ng-container matColumnDef="expandedDetail">
+                            <td mat-cell *matCellDef="let element;" [attr.colspan]="displayedColumnsSmall.length">
+                                <div class="example-element-detail"
+                                     [@detailExpand]="element == expandedElement ? 'expanded' : 'collapsed'">
+                                    <div class="example-element-diagram"
+                                         fxLayout="row wrap">
+                                        <div class="example-element-position"
+                                             *ngFor="let ex of expandDataSmall"
+                                             fxFlex="100"
+                                             fxLayoutAlign="start start">
+                                            <span *ngIf="dataColumns[ex].columnsType=='text'">
+                                                <span class="expandData">{{dataColumns[ex].columnsName}}:</span> <span class="expand-desc">{{element[ex]}}</span>
+                                            </span>
+                                            <span *ngIf="dataColumns[ex].columnsType=='textObject'">
+                                                <span class="expandData">{{dataColumns[ex].columnsName}}:</span> <span class="expand-desc">{{element[ex].title}}</span>
+
+                                            </span>
+                                            <span *ngIf="dataColumns[ex].columnsType=='textObjectName'">
+                                                <span class="expandData">{{dataColumns[ex].columnsName}}:</span> <span class="expand-desc">{{element[ex].name}} </span>
+                                            </span>
+                                            <span *ngIf="dataColumns[ex].columnsType=='textObjectNameFa'">
+                                                <span class="expandData">{{dataColumns[ex].columnsName}}:</span> <span class="expand-desc">{{element[ex].nameFa}} </span>
+                                            </span>
+                                            <span *ngIf="dataColumns[ex].columnsType=='list'">
+                                                <span class="expandData">{{dataColumns[ex].columnsName}}:</span> <span class="expand-desc" *ngFor="let item of element[ex]; index as x">
+                                                    <span *ngIf="checkType(item)">{{item.title}}</span>
+                                                    <span *ngIf="!checkType(item)">{{item}}</span>
+                                                    <span class="expand-desc" *ngIf="x+1<element[ex].length">,</span>
+                                                </span>
+                                            </span>
+                                        </div>
+
+                                    </div>
+
+                                </div>
+                            </td>
+                        </ng-container>
+                        <tr mat-header-row *matHeaderRowDef="displayedColumnsSmall"></tr>
+
+                        <tr mat-row *matRowDef="let element; columns: displayedColumnsSmall"
+                            class="example-element-row">
+                        </tr>
+                        <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="example-detail-row"></tr>
+                    </table>
+                    <table mat-table [dataSource]="data |filter: repSearch| order_by:peropertySort:sortType" class="mat-elevation-z8" *ngIf="expandable"
+                           multiTemplateDataRows fxHide fxShow.gt-xs
+                           matSort (matSortChange)="sortData($event,data)" #empTbSort="matSort" arrowPosition='before'>
+                        <ng-container [matColumnDef]="column" *ngFor="let column of displayedColumns">
+                            <th mat-header-cell *matHeaderCellDef mat-sort-header [disabled]="(dataColumns[column].disableSort==false) ?dataColumns[column].disableSort:true">
+                                <span *ngIf="dataColumns[column].columnsType!='select'">{{dataColumns[column].columnsName}}</span>
+                                <div *ngIf="dataColumns[column].columnsType=='select'">
+                                    <mat-checkbox (change)="$event ? masterToggleTable() : null"
+                                                  [checked]="selectionTable.hasValue() && isAllSelectedTable()"
+                                                  [indeterminate]="selectionTable.hasValue() && !isAllSelectedTable()"
+                                                  [aria-label]="checkboxLabelTable()"
+                                                  >
+                                    </mat-checkbox>
+                                </div>
+                            </th>
+                            <td mat-cell *matCellDef="let element; let rowIdx = dataIndex;" data-label="{{column}}"
+                                [ngClass]="element['color']?element['color']:''">
+
+                                <div *ngIf="dataColumns[column].columnsType=='select'">
+                                    <mat-checkbox (click)="$event.stopPropagation()"
+                                                  (change)="$event ? selectionTable.toggle(element) : null; selectionItem.emit(selectionTable)"
+                                                  [checked]="selectionTable.isSelected(element)"
+                                                  [aria-label]="checkboxLabelTable(element,rowIdx)"
+                                                  [(ngModel)]="element.selected"
+                                                  [ngModelOptions]="{standalone: true}">
+                                    </mat-checkbox>
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='singleSelect'">
+                                    <mat-checkbox (click)="$event.stopPropagation()"
+                                                  [checked]="selectionTable.isSelected(element)" (change)="$event ? checkItem($event,element) : selectionTable.clear()">
+                                    </mat-checkbox>
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='index'">
+                                    {{(tablePaginator.pageSize*tablePaginator.pageIndex)+rowIdx+1}}
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='text'">
+                                    {{element[column]}}
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='textObject'">
+                                    {{element[column].title}}
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='list' && dataColumns[column]?.show!='all'">
+
+
+                                    <span class="expand-desc" *ngFor="let item of element[column]; index as x">
+                                        <span *ngIf="x<2">
+
+                                            <span *ngIf="checkType(item)">
+                                                {{dataColumns[column].displayName?item[dataColumns[column].displayName]:item.title}}
+                                            </span>
+                                            <span *ngIf="!checkType(item)">{{item}}</span>
+                                            <span class="expand-desc" *ngIf="x+1<element[column].length">,</span>
+                                        </span>
+                                        <span *ngIf="x==2">
+                                            ...
+                                        </span>
+                                    </span>
+
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='list' && dataColumns[column]?.show=='all'">
+
+
+                                    <span class="expand-desc" *ngFor="let item of element[column]; index as x">
+
+
+                                        <span *ngIf="checkType(item)">
+                                            {{dataColumns[column].displayName?item[dataColumns[column].displayName]:item.title}}
+                                        </span>
+                                        <span *ngIf="!checkType(item)">{{item}}</span>
+                                        <span class="expand-desc" *ngIf="x+1<element[column].length">,</span>
+
+                                    </span>
+
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='textObjectName'">
+                                    {{element[column].name}}
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='textObjectNameFa'">
+                                    {{element[column].nameFa}}
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='routerLinkObject'">
+                                    <a [routerLink]="element[column].routerLink">{{element[column].title}}</a>
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='MatToggle'">
+                                    <mat-slide-toggle [checked]="element[column]" (change)="dataColumns[column].function(element,(tablePaginator.pageSize*tablePaginator.pageIndex)+rowIdx,$event)"></mat-slide-toggle>
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='Menu'">
+                                    <button mat-icon-button [matMenuTriggerFor]="moreMenu" aria-label="More"
+                                            fxHide.xs>
+                                        <mat-icon class="secondary-text">more_vert</mat-icon>
+                                    </button>
+                                    <mat-menu #moreMenu="matMenu" #menu>
+
+                                        <div>
+
+                                            <button mat-menu-item aria-label="toggle done"
+                                                    (click)="item.function($event,element)"
+                                                    *ngFor="let item of dataColumns[column].menuItem"
+                                                    [disabled]="element[item.name]?element[item.name]:false">
+                                                <ng-container>
+                                                    <mat-icon *ngIf="item.icon">{{item.icon}}</mat-icon>
+                                                    <span> {{item.title}}</span>
+                                                </ng-container>
+                                            </button>
+                                        </div>
+                                    </mat-menu>
+                                </div>
+                                <div *ngIf="dataColumns[column].columnsType=='trueFalseIcon'">
+                                    <mat-icon *ngIf="element[column]" style="color: green;">{{dataColumns[column].trueIcon?dataColumns[column].trueIcon:'check_circle'}}</mat-icon>
+                                    <mat-icon *ngIf="element[column]!=null && !element[column]" style="color: red;">{{dataColumns[column].falseIcon?dataColumns[column].falseIcon:'highlight_off'}}</mat-icon>
+                                </div>
+                                <button mat-icon-button matTooltip="{{dataColumns[column].columnsName}}" *ngIf="dataColumns[column].columnsType=='Button'"
+                                        (click)="dataColumns[column].function((tablePaginator.pageSize*tablePaginator.pageIndex)+rowIdx,element)"
+                                        [disabled]="element[column]?element[column]:false">
+                                    <mat-icon>{{dataColumns[column].columnsIcon}}</mat-icon>
+                                </button>
+                                <button mat-icon-button matTooltip="{{dataColumns[column].columnsName}}" *ngIf="dataColumns[column].columnsType=='ex'"
+                                        [class.example-expanded-row]="expandedElement === element"
+                                        (click)="checkExpand(element,rowIdx)">
+                                    <mat-icon *ngIf="!expandedElement || expandedElement!= element">expand_more</mat-icon>
+                                    <mat-icon *ngIf="expandedElement && expandedElement== element">expand_less</mat-icon>
+                                </button>
+                            </td>
+
+                        </ng-container>
+                        <ng-container matColumnDef="expandedDetail">
+                            <td mat-cell *matCellDef="let element;" [attr.colspan]="displayedColumns.length">
+                                <div class="example-element-detail"
+                                     [@detailExpand]="element == expandedElement ? 'expanded' : 'collapsed'">
+                                    <div class="example-element-diagram"
+                                         fxLayout="row wrap">
+                                        <div class="example-element-position"
+                                             *ngFor="let ex of expandData"
+                                             [fxFlex]="expandData.length===1||dataColumns[ex].columnsType=='list'?100:50"
+                                             fxLayoutAlign="start start">
+                                            <span *ngIf="dataColumns[ex].columnsType=='text'">
+                                                <span class="expandData">{{dataColumns[ex].columnsName}}:</span> <span class="expand-desc">{{element[ex]}}</span>
+
+                                            </span>
+                                            <span *ngIf="dataColumns[ex].columnsType=='textObject'">
+                                                <span class="expandData">{{dataColumns[ex].columnsName}}:</span> <span class="expand-desc">{{element[ex].title}}</span>
+                                            </span>
+                                            <span *ngIf="dataColumns[ex].columnsType=='textObjectName'">
+                                                <span class="expandData">{{dataColumns[ex].columnsName}}:</span> <span class="expand-desc">{{element[ex].name}} </span>
+                                            </span>
+                                            <span *ngIf="dataColumns[ex].columnsType=='textObjectNameFa'">
+                                                <span class="expandData">{{dataColumns[ex].columnsName}}:</span> <span class="expand-desc">{{element[ex].nameFa}} </span>
+                                            </span>
+                                            <span *ngIf="dataColumns[ex].columnsType=='list'">
+                                                <span class="expandData">{{dataColumns[ex].columnsName}}:</span> <span class="expand-desc" *ngFor="let item of element[ex]; index as x">
+                                                    <span *ngIf="checkType(item)">{{item.title}}</span>
+                                                    <span *ngIf="!checkType(item)">{{item}}</span>
+                                                    <span class="expand-desc" *ngIf="x+1<element[ex].length">,</span>
+                                                </span>
+                                            </span>
+                                        </div>
+
+                                    </div>
+
+                                </div>
+                            </td>
+                        </ng-container>
+                        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+
+                        <tr mat-row *matRowDef="let element; columns: displayedColumns"
+                            class="example-element-row">
+                        </tr>
+                        <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="example-detail-row" ></tr>
+                    </table>
+                </div>
+                <mat-paginator #tablePaginator [pageSizeOptions]="pageSize" showFirstLastButtons [length]="listCount"
+                               (page)="getDatas($event)"></mat-paginator>
+            </mat-card-content>
+        </mat-card>
+
+
+    </div>
+</div>
+

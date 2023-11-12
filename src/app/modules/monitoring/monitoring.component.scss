@@ -1,0 +1,28 @@
+.map-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.map-frame {
+
+    height: 100%;
+}
+
+#map {
+    height: 100%;
+}
+div.relative {
+    position: relative;
+}
+
+div.absolute {
+    position: absolute;
+    background-color: white;
+    z-index: 1000;
+    top: 0px;
+    height: 100%;
+    overflow: scroll;
+}

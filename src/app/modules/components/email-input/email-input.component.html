@@ -1,0 +1,21 @@
+<form [formGroup]="formGroup">
+    <mat-form-field [appearance]="appearance"  class="w-full">
+        <mat-label> {{lable}}</mat-label>
+        <input matInput [placeholder]="placeholder" [formControlName]="formNames" [required]="isrequired" [readonly]="readonly">
+
+        <mat-icon matPrefix *ngIf="icon != ''"
+                  class="hidden sm:flex icon-size-5 ml-2"
+                  [svgIcon]="icon"></mat-icon>
+
+        <mat-error *ngIf="formGroup.get(formNames).errors?.required">
+            {{lable}} is required
+        </mat-error>
+
+        <mat-error *ngIf="formGroup.get(formNames).errors?.email">
+            Please enter a valid email address
+                </mat-error>
+
+    </mat-form-field>
+</form>
+
+
